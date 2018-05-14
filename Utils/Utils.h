@@ -188,22 +188,22 @@ namespace utils {
 		using type = list<F,T...>;
 	};
 
+	template<unsigned long long F, typename T, typename... P>
+	struct getType;
+
+	template<typename T, typename... Ts>
+	struct getType<0, T, Ts...>;
+
+	template<unsigned long long F, template<typename, typename...> typename List, typename T, typename... P>
+	struct getType<F, List<T, P...>>;
+
 
 	template<unsigned long long F, typename T, typename... P>
 	struct getType
 	{
-
 		static_assert(F >= 0, "no negative values allowed");
-		//static_assert(F < list<T,P...>::size, "index out of bounds");
-		using type =  
-			typename conditional<
-				F == 0,
-			typename front<list<T,P...>>::type,
-			typename getType<
-					(F - 1),
-					P...
-				>::type
-			>::type;   
+		static_assert(F < (sizeof...(P)+1), "index out of bounds");
+		using type = typename getType<F - 1, P...>::type;
 	};
 
 	template<unsigned long long F, template<typename,typename...> typename List,typename T, typename... P>
@@ -212,8 +212,15 @@ namespace utils {
 
 		static_assert(F >= 0, "no negative values allowed");
 		//static_assert(F < list<T,P...>::size, "index out of bounds");
-		using type =
+		using type = 
 			typename getType<F, T, P...>::type;
+	};
+
+	//necessary for tl variant (ambiguous instantiation)
+	template<template<typename, typename...> typename List, typename T, typename... P>
+	struct getType<0, List<T, P...>>
+	{
+		using type = T;
 	};
 
 	template<typename T, typename... Ts>
