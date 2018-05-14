@@ -17,12 +17,10 @@ namespace utils {
 	template<typename T, typename O>
 	struct isEqual;
 
-	//should be used with makro
-	template<typename T, T x>
+	template<auto x>
 	struct	minRequired;
 
-	//should be used with makro
-	template<typename T, T x>
+	template<auto x>
 	struct minRequiredUnsigned;
 	
 
@@ -55,10 +53,6 @@ namespace utils {
 			static constexpr bool value = true;
 		};
 
-	
-		constexpr size_t abs(const ssize_t ABS) {
-			return (ABS < 0 ? -ABS : ABS);
-		}
 
 		template<long long x>
 		struct	minRequired {
@@ -144,15 +138,15 @@ namespace utils {
 		static constexpr bool value = details::isEqual<T, O>::value;
 	};
 
-	#define minReqS(value) typename utils::minRequired<decltype(value),value>::type
-	template<typename T, T x>
-	struct	minRequired {
+	//#define minReqS(value) typename utils::minRequired<decltype(value),value>::type
+	template<auto x>
+	struct minRequired {
 		using type = typename conditional<x <= INT_MAX,typename details::minRequired<x>::min,void>::type;
 		static_assert(!isEqual<type, void>::value, "signed value is too big to fit to an unsigned type");
 	};
 
-	#define minReqU(value) typename utils::minRequiredUnsigned<decltype(value),value>::type
-	template<typename T, T x>
+	//#define minReqU(value) typename utils::minRequiredUnsigned<decltype(value),value>::type
+	template<auto x>
 	struct minRequiredUnsigned {
 		static_assert(x >= 0, " tried to use unsigned type for negative value");
 		using type = typename details::minRequiredUnsigned<x>::min;
@@ -164,7 +158,9 @@ namespace utils {
 	};
 
 	template<typename first,typename ...T>
-	struct list {};
+	struct list {
+		static constexpr auto size = sizeof...(T)+1;
+	};
 
 
 	template<typename T>
@@ -184,6 +180,48 @@ namespace utils {
 		using type = List<Push,T...>;
 	};
 
+	template<typename T>
+	struct pop_front { using type = list<T>; };
+
+	template<typename F, typename ...T>
+	struct pop_front<list<F,T...>> {
+		using type = list<F,T...>;
+	};
+
+
+	template<unsigned long long F, typename T, typename... P>
+	struct getType
+	{
+
+		static_assert(F >= 0, "no negative values allowed");
+		//static_assert(F < list<T,P...>::size, "index out of bounds");
+		using type =  
+			typename conditional<
+				F == 0,
+			typename front<list<T,P...>>::type,
+			typename getType<
+					(F - 1),
+					P...
+				>::type
+			>::type;   
+	};
+
+	template<unsigned long long F, template<typename,typename...> typename List,typename T, typename... P>
+	struct getType<F,List<T,P...>>
+	{
+
+		static_assert(F >= 0, "no negative values allowed");
+		//static_assert(F < list<T,P...>::size, "index out of bounds");
+		using type =
+			typename getType<F, T, P...>::type;
+	};
+
+	template<typename T, typename... Ts>
+	struct getType<0,T,Ts...>
+	{
+		using type = T;
+	};
+
 	template<typename first,typename ...T>
 	constexpr bool sameTypes() {
 		if constexpr(sizeof...(T) == 0) 
@@ -196,28 +234,4 @@ namespace utils {
 		}
 	
 	};
-
-	struct safe_size_t {
-		size_t* wrappedVal = nullptr;
-
-		constexpr safe_size_t(ssize_t x) {
-			if (x >= 0)
-				*wrappedVal = x;
-		}
-
-		constexpr safe_size_t(size_t x) {
-			*wrappedVal = x;
-		}
-	};
-
-	/*
-	template<template<typename, typename...> typename List, typename pop, typename F, typename... T>
-	struct popType {
-		using type = 
-			typename conditional < sizeof...(T) == 0, popType,
-				typename conditional<isEqual<F, front<List>::type>::value, popType<List, pop>, popType<list<F, T...>, pop>
-				>::type
-			>::type;//isEqual<F, first<list>::type>::value ? popType<list, F, T..., pop> : popType<list<F, T...>, F, T..., pop>>::type;
-	};	  */
-
 }
